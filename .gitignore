@@ -1,25 +1,64 @@
-# 依赖
+# ---------------- 依赖 ----------------
 node_modules/
+.pnpm-store/
+.yarn/
 
-# 构建产物
+# ---------------- 构建产物 ----------------
 dist/
 dist-ssr/
 out/
 installPackages/
+*.tsbuildinfo
 
-# 日志
+# ---------------- 缓存 ----------------
+.cache/
+.parcel-cache/
+.vite/
+coverage/
+
+# ---------------- 日志 ----------------
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# 本地配置
-*.local
+# ---------------- 凭据与密钥（切勿提交）----------------
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+.netrc
+.htpasswd
+credentials.json
+serviceAccount*.json
+.npmrc
+.yarnrc
+.yarnrc.yml
+.aws/
+.azure/
+.firebase/
+.vercel/
+.wrangler/
 
-# 系统 / 编辑器
+# 例外：02-qingliao/.npmrc 仅配置 electron 镜像源，不含任何密钥。
+# 若往其中写入 _authToken 之类的凭据，请删除下面这行例外并把该文件移出仓库。
+!02-qingliao/.npmrc
+
+# ---------------- 本地配置 ----------------
+*.local
+
+# ---------------- 系统 / 编辑器 ----------------
 .DS_Store
 Thumbs.db
+desktop.ini
+.idea/
+*.sw?
