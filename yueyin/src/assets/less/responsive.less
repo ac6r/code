@@ -1,0 +1,40 @@
+// ==========================================
+// 响应式断点变量 & Mixin
+// 统一封装项目中所有响应式布局逻辑
+// ==========================================
+
+// ----- 断点变量 -----
+@bp-mobile: 767px;
+@bp-tablet-min: 768px;
+@bp-tablet-max: 1024px;
+@bp-desktop-narrow: 1500px;
+
+// ----- 响应式 Mixin（Less 4.x detached rulesets） -----
+
+// 移动端（<768px）
+.respond-mobile(@rules) {
+    @media screen and (max-width: @bp-mobile) {
+        @rules();
+    }
+}
+
+// 平板端（768px - 1024px）
+.respond-tablet(@rules) {
+    @media screen and (min-width: @bp-tablet-min) and (max-width: @bp-tablet-max) {
+        @rules();
+    }
+}
+
+// 平板及以下（≤1024px）— 当平板和移动端样式相同时使用
+.respond-tablet-down(@rules) {
+    @media screen and (max-width: @bp-tablet-max) {
+        @rules();
+    }
+}
+
+// 窄桌面（≤1500px）
+.respond-desktop-narrow(@rules) {
+    @media screen and (max-width: @bp-desktop-narrow) {
+        @rules();
+    }
+}
