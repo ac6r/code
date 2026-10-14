@@ -14,7 +14,6 @@
             :userId="item.contactId"
             :userName="item.nickName"
             :avatar="item.avatar"
-            :randomAnimal="false"
          
           />
         </div>
@@ -31,7 +30,6 @@
           <Avatar
             :userId="item.contactId"
             :userName="item.nickName"
-            :randomAnimal="false"
             :avatar="item.avatar"
           />
         </div>

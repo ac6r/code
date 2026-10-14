@@ -43,8 +43,6 @@
                     :userId="contact.contactId"
                     :userName="contact.contactName"
                     :hideButton="true"
-                    :randomAnimal="true"
-                    animalType="dog"
                   />
                 </div>
                 <div class="text">{{ contact.contactName }}</div>

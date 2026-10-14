@@ -6,8 +6,6 @@
         :userId="userInfo?.userId || userInfo?.contactId"
         :userName="userInfo?.nickName"
         :hideButton="true"
-        :randomAnimal="true"
-        animalType="dog"
       />
     </div>
     <div class="user-info">

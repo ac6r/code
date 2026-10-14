@@ -6,8 +6,6 @@
       :userName="userinfo.nickName"
       :userId="userinfo.userId"
       :userRegion="userinfo.areaName"
-      :randomAnimal="true"
-      animalType="dog"
     />
         <div class="more-op">
           <el-dropdown placement="bottom-end" trigger="click">

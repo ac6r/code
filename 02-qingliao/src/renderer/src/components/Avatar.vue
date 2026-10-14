@@ -1,21 +1,8 @@
 <template>
   <div class="avatar-card">
     <div class="avatar-wrapper">
-      <!-- 点击头像区域触发换图（如果启用了随机动物） -->
-      <div 
-        class="avatar-box" 
-        @click="refreshIfRandom"
-        :style="{ cursor: randomAnimal ? 'pointer' : 'default' }"
-      >
-        <img 
-          :src="currentAvatar" 
-          alt="用户头像" 
-          @error="handleAvatarError"
-          v-if="!avatarError"
-        />
-        <div class="default-avatar" v-else></div>
-        <!-- 刷新图标（仅当随机模式） -->
-        <div v-if="randomAnimal" class="refresh-icon">🔄</div>
+      <div class="avatar-box">
+        <img :src="displayAvatar" alt="用户头像" @error="handleAvatarError" />
       </div>
 
       <div class="user-info">
@@ -24,97 +11,46 @@
         <div class="user-region">地区: {{ userRegion }}</div>
       </div>
     </div>
-
-  
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { avatarDataUri } from '../utils/avatar'
 
 const props = defineProps({
-  // 原有参数
   avatar: { type: String, default: '' },
   userName: { type: String, required: true },
   userId: { type: [String, Number], required: true },
   userRegion: { type: String, default: '-' },
-  // 新增：是否启用随机动物头像
+  // 兼容旧调用（模板本身不含按钮）
+  hideButton: { type: Boolean, default: false },
+  // 兼容旧调用：随机动物头像已改为本地生成，这两个参数不再使用
   randomAnimal: { type: Boolean, default: false },
-  // 动物类型（可选：dog/cat），默认 dog
   animalType: { type: String, default: 'dog' }
 })
 
-const emit = defineEmits(['action'])
-
 const avatarError = ref(false)
-// 当前实际显示的头像 URL（可能是传入的 avatar，也可能是随机动物）
-const currentAvatar = ref(props.avatar || '')
 
-// 如果外部 avatar 变化，同步更新（但随机模式下忽略外部变化）
-watch(() => props.avatar, (newVal) => {
-  if (!props.randomAnimal) {
-    currentAvatar.value = newVal || ''
+// 本地生成头像：由昵称 + ID 决定，稳定、即时、离线可用
+const localAvatar = computed(() => avatarDataUri(props.userName, props.userId))
+
+// 有外部头像就用；没有或加载失败时一律回退到本地头像，绝不显示空白
+const displayAvatar = computed(() => {
+  if (props.avatar && !avatarError.value) return props.avatar
+  return localAvatar.value
+})
+
+watch(
+  () => props.avatar,
+  () => {
     avatarError.value = false
   }
-})
+)
 
 const handleAvatarError = () => {
   avatarError.value = true
 }
-
-const handleButtonClick = () => {
-  emit('action', { userId: props.userId, userName: props.userName })
-}
-
-// ---------- 随机动物图片逻辑 ----------
-const fetchRandomAnimal = async () => {
-  avatarError.value = false // 重置错误状态
-  try {
-    let url = ''
-    if (props.animalType === 'dog') {
-      const res = await fetch('https://dog.ceo/api/breeds/image/random')
-      const data = await res.json()
-      if (data.status === 'success') {
-        url = data.message
-      } else {
-        throw new Error('API 返回失败')
-      }
-    } else if (props.animalType === 'cat') {
-      // 使用 The Cat API (无需 api key)
-      const res = await fetch('https://api.thecatapi.com/v1/images/search?limit=1')
-      const data = await res.json()
-      if (data.length > 0) {
-        url = data[0].url
-      } else {
-        throw new Error('API 返回空')
-      }
-    } else {
-      // 兜底：用 LoremFlickr
-      const seed = Date.now() + Math.random()
-      url = `https://loremflickr.com/200/200/${props.animalType}?random=${seed}`
-      // LoremFlickr 重定向后是图片，但会有缓存问题，加上时间戳
-    }
-    if (url) {
-      currentAvatar.value = url
-    }
-  } catch (err) {
-    console.error('获取动物图片失败', err)
-    avatarError.value = true // 显示默认图
-  }
-}
-
-const refreshIfRandom = () => {
-  if (props.randomAnimal) {
-    fetchRandomAnimal()
-  }
-}
-
-// 如果启用了随机模式，且没有传入有效头像，则自动加载一张
-onMounted(() => {
-  if (props.randomAnimal && !currentAvatar.value) {
-    fetchRandomAnimal()
-  }
-})
 </script>
 
 <style lang="scss" scoped>
@@ -138,37 +74,12 @@ onMounted(() => {
   border-radius: 4px;
   flex-shrink: 0;
   overflow: hidden;
-  
+
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-
-  .default-avatar {
-    width: 100%;
-    height: 100%;
-    background-color: #d6d6d6;
-  }
-
-  .refresh-icon {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 18px;
-    height: 18px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  &:hover .refresh-icon {
-    opacity: 1;
+    display: block;
   }
 }
 
@@ -180,7 +91,8 @@ onMounted(() => {
     color: #000;
     margin-bottom: 8px;
   }
-  .user-id, .user-region {
+  .user-id,
+  .user-region {
     font-size: 14px;
     color: #666;
     margin-bottom: 4px;

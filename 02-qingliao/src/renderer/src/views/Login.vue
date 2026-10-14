@@ -22,14 +22,14 @@
         <el-form-item prop="password">
           <el-input show-password size="large" clearable placeholder="请输入密码" v-model.trim="formData.password">
             <template #prefix>
-              <span class="iconfont icon-lock"></span>
+              <span class="iconfont icon-password"></span>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item prop="repassword" v-if="!isLogin">
           <el-input show-password size="large" clearable placeholder="请再次输入密码" v-model.trim="formData.repassword">
             <template #prefix>
-              <span class="iconfont icon-lock"></span>
+              <span class="iconfont icon-password"></span>
             </template>
           </el-input>
         </el-form-item>
@@ -37,7 +37,7 @@
           <div class="check-code-panel">
             <el-input size="large" clearable placeholder="请输入验证码" v-model.trim="formData.checkcode">
               <template #prefix>
-                <span class="iconfont icon-safe"></span>
+                <span class="iconfont icon-checkcode"></span>
               </template>
             </el-input>
             <div class="code-box" @click="getVerifyCode">

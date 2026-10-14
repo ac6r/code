@@ -5,7 +5,8 @@ function initFixedContactMessages(){
     const allFixed = [...fixedUsers, ...fixedGroups]
     allFixed.forEach(item =>{
         if(!chatMessages[item.contactId]){
-            chatMessages[item.contactId] = [...(item.messages) || []]
+            // 固定会话不再预置消息，统一从空数组开始
+            chatMessages[item.contactId] = []
         }
     })
 }

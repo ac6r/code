@@ -80,7 +80,7 @@ export const useUserInfoStore = defineStore('userInfo', {
                     areaName: '北京 朝阳',
                     joinType: 0,
                     personalSignature: '好好学习，天天向上',
-                    avatar: 'https://robohash.org/u_fixed1?set=set4',
+                    avatar: '',
                     token: 'MOCK-TOKEN-XIAOMING'
                 },
                 {
@@ -91,7 +91,7 @@ export const useUserInfoStore = defineStore('userInfo', {
                     areaName: '上海 浦东',
                     joinType: 0,
                     personalSignature: '生活就像骑自行车，想保持平衡就得往前走',
-                    avatar: 'https://robohash.org/u_fixed2?set=set4',
+                    avatar: '',
                     token: 'MOCK-TOKEN-XIAOHONG'
                 },
                 {

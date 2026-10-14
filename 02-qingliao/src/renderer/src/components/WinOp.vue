@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { ref,reactive,getCurrentInstance,nextTick, onMounted } from 'vue';
+import { ref,reactive,getCurrentInstance,nextTick, onMounted, onUnmounted } from 'vue';
 const {proxy} = getCurrentInstance()
 
 const props = defineProps({
@@ -48,9 +48,24 @@ const props = defineProps({
 
 const isMax = ref(false)
 const isTop = ref(false)
+
+// 主进程推送的真实窗口状态（如双击拖拽区最大化时会用到）
+const onWinState = (_e, state) => {
+    if (!state) return
+    if (typeof state.isMaximized === 'boolean') isMax.value = state.isMaximized
+    if (typeof state.isAlwaysOnTop === 'boolean') isTop.value = state.isAlwaysOnTop
+}
 onMounted(()=>{
     isMax.value = false
     isTop.value = false
+    if (window.ipcRenderer) {
+        window.ipcRenderer.on('winState', onWinState)
+    }
+})
+onUnmounted(()=>{
+    if (window.ipcRenderer) {
+        window.ipcRenderer.removeListener('winState', onWinState)
+    }
 })
 
 const winOp = (action, data) => {
