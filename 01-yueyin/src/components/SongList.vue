@@ -71,6 +71,7 @@
 <script setup>
 import { computed, getCurrentInstance, nextTick, onMounted, reactive, ref, watch , toRefs} from 'vue'
 import { usePlayerStore } from "@/stores/player"
+import { canPlaySong, tipUnplayable } from '@/utils/vip'
 
 const { proxy } = getCurrentInstance()
 
@@ -165,18 +166,33 @@ const playIcon = computed(() => {
 
 // 播放当前播放歌曲
 const currentSong = (item) => {
-    // 若当前唔歌曲 或者 当前播放歌曲不是本歌单显示的歌曲  立即播放当前歌单
-    if (!curSongInfo.value || item.id !== curSongInfo.value.id) {
-        store.selectPlay( { list: [item] })
-    } else {
-        store.SET_PLAYSTATUS( !isPlayed.value)
+    // 点的正是当前播放的这首 → 切换播放/暂停
+    if (curSongInfo.value && item.id === curSongInfo.value.id) {
+        store.SET_PLAYSTATUS(!isPlayed.value)
+        return
     }
+
+    // 其余情况要新开播放：VIP / 无版权歌曲给出明确说明（VIP 附官方开通入口），不静默失败
+    if (!canPlaySong(item)) {
+        tipUnplayable(proxy, item)
+        return
+    }
+
+    store.selectPlay({ list: [item] })
 }
 
 // 添加当前歌曲到播放列表
 const addSongList = (item) => {
-    store.addList( { list: [item] })
-    store.SET_PLAYLISTTIPS( true)
+    if (!canPlaySong(item)) {
+        tipUnplayable(proxy, item)
+        return
+    }
+
+    if (store.addList({ list: [item] })) {
+        store.SET_PLAYLISTTIPS(true)
+    } else {
+        proxy.$msg.info('已在播放列表中')
+    }
 }
 
 // 收藏单曲到「我喜欢的音乐」
@@ -457,7 +473,8 @@ const { typeSize, height, curScroll, pageSize, currentPage, playing, timer } = t
             color: #ccc;
         }
 
-        .playicon, .songlist-oper {
+        /* 播放按钮保留可点：点了会说明原因（VIP 附官方开通入口），而不是静默无反应 */
+        .songlist-oper {
             display: none;
         }
 

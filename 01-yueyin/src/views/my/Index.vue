@@ -30,7 +30,7 @@
                             <span>粉丝<em>{{ userInfo.followeds }}</em></span>
                             <span>Lv.<em>{{ userInfo.level || 0 }}</em></span>
                         </div>
-                        <div class="user-sign" v-if="userInfo.signnature">{{ userInfo.signnature }}</div>
+                        <div class="user-sign" v-if="userInfo.signature">{{ userInfo.signature }}</div>
                      </div>
                 </div>
                 <template v-if="loading">

@@ -15,6 +15,8 @@
 <script setup>
 import { reactive,nextTick,computed,ref,watch,toRefs } from 'vue';
 import {usePlayerStore} from "@/stores/player"
+import { ElMessage } from 'element-plus'
+import { tipUnplayable } from '@/utils/vip'
 
 const store = usePlayerStore()
 const emit = defineEmits(['setCurrentTime'])
@@ -57,9 +59,10 @@ const changeSong = (type) => {
 //单曲循环
 const loopsong = () => {
     const $myAudio = myAudio.value
+    if (!$myAudio) return
 
     $myAudio.currentTime = 0
-    $myAudio.play()
+    $myAudio.play().catch(() => {})
     store.SET_PLAYSTATUS(true)
 }
 
@@ -117,6 +120,19 @@ const endedSong = () => {
     }
 }
 
+// 音频加载/播放出错：例如歌曲无版权、VIP 未开通、或官方外链失效。
+// 模板里一直绑着 @error="errorSong"，但之前没有定义这个函数，
+// 一旦出错会直接抛 TypeError，既没有提示、状态也停在“播放中”。
+const errorSong = () => {
+    info['initAudioReady'] = false
+    store.SET_PLAYSTATUS(false)
+
+    // 能判断出原因（VIP / 无版权）就用统文案，否则给通用提示
+    if (!tipUnplayable(ElMessage, curSongInfo.value)) {
+        ElMessage({ type: 'warning', message: '该歌曲暂时无法播放', duration: 3500 })
+    }
+}
+
 //监视音频时间，实时更新当前播放时间
 const updateSongTime = (e) => {
     if(!info.initAudioReady) {
@@ -139,7 +155,8 @@ watch(curSongInfo, (newSong, oldSong) => {
         const $myAudio = myAudio.value
 
         if($myAudio) {
-            $myAudio.play()
+            // play() 返回 Promise，被自动播放策略拦下或音源无效时会 reject，这里吞掉
+            $myAudio.play().catch(() => {})
         }
     })
 }, {deep:true})
@@ -154,7 +171,11 @@ watch(() => isPlayed.value, (playing) => {
         const $myAudio = myAudio.value
 
         if ($myAudio) {
-            playing ? $myAudio.play() : $myAudio.pause()
+            if (playing) {
+                $myAudio.play().catch(() => {})
+            } else {
+                $myAudio.pause()
+            }
         }
     })
 })

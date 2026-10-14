@@ -86,8 +86,11 @@ const getToplist = async() => {
 
 //添加当前歌曲到播放列表
 const addSongList = (item) =>{
-    store.addList({list:[item]})
-    store.SET_PLAYLISTTIPS(true)
+    if (store.addList({ list: [item] })) {
+        store.SET_PLAYLISTTIPS(true)
+    } else {
+        proxy.$msg.info('已在播放列表中')
+    }
 }
 
 onMounted(() =>{

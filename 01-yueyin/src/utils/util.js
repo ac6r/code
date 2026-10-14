@@ -82,16 +82,15 @@ export default {
 
         return [...map.values()]
     },
-    //处理歌曲
-    formatSongs(list, privileges) {
+    // 处理歌曲：统一在这里判定「是否有版权」；是否为 VIP 由 fee 决定（见 song.js）
+    formatSongs(list = [], privileges = []) {
         const ret = []
-        list.map((item, index) => {
-            if (item.id) {
-                //是否有版权播放
-                item.license = !privileges[index].cp
-                ret.push(formatSongInfo(item))
-            }
-
+        list.forEach((item, index) => {
+            if (!item || !item.id) return
+            const privilege = privileges[index]
+            // 接口没返回对应权限时保持原值，不要粗暴判成无版权（也不能直接崩）
+            if (privilege) item.license = !privilege.cp
+            ret.push(formatSongInfo(item))
         })
         return ret
     }

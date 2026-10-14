@@ -160,7 +160,9 @@ const playAllSongs = () => {
     if (!info.hotSongs.length) {
         return
     }
-    store.playAll({ list: info.hotSongs })
+    if (!store.playAll({ list: info.hotSongs })) {
+        return proxy.$msg.warning('该歌手暂无可播放的热门歌曲（可能为 VIP 或无版权）')
+    }
     store.SET_PLAYLISTTIPS(true)
 }
 

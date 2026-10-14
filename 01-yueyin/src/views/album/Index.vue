@@ -134,9 +134,10 @@ const showAllDesc = () =>{
 }
 
 const playAllSongs = () =>{
-    store.playAll({
-        list:info.songList
-    })
+    // 整张专辑都是 VIP / 无版权时不静默无反应
+    if (!store.playAll({ list: info.songList })) {
+        return proxy.$msg.warning('该专辑暂无可播放的歌曲（可能为 VIP 或无版权）')
+    }
     store.SET_PLAYLISTTIPS(true)
 }
 

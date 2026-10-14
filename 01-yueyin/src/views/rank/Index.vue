@@ -190,9 +190,9 @@ const subPlayList = async(item) => {
      proxy.$msg.success(favorited ? '已添加到我的音乐' : '已取消收藏')
 }
 const playAllSongs = () => {
-    store.playAll( {
-        list: info.songList
-    })
+    if (!store.playAll({ list: info.songList })) {
+        return proxy.$msg.warning('该榜单暂无可播放的歌曲（可能为 VIP 或无版权）')
+    }
     store.SET_PLAYLISTTIPS( true)
 }
 

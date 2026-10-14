@@ -480,8 +480,7 @@ const routes = {
       follows: 12,
       followeds: 34,
       level: 8,
-      // 注意：前端读的是 signnature（拼写如此），不是 signature
-      signnature: '这个人很懒，什么都没写~',
+      signature: '这个人很懒，什么都没写~',
     },
   }),
 

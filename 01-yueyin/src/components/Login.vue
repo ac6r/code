@@ -128,13 +128,16 @@ const loginSubmit = async () => {
             // 2. 尝试网易云 API 登录
             try {
                 const { data: res } = await proxy.$http.login({ phone, pwd })
-                if (res.code === 200) {
-                    const { data: info } = await proxy.$http.getUserInfo({ uid: res.profile.userId })
-                    if (info.code === 200) {
-                        setLoginSuccess(info.profile, res.token, res.cookie)
-                    } else {
-                        setLoginSuccess(res.profile, res.token, res.cookie)
-                    }
+                // mock / 未登录场景下登录接口可能返回 code:200 但 profile 为 null（并带提示 msg）。
+                // 之前直接读 res.profile.userId 会抛异常，把有用的提示吞掉、统一误报成「登录失败」。
+                if (res.code === 200 && res.profile) {
+                    let profile = res.profile
+                    try {
+                        const { data: info } = await proxy.$http.getUserInfo({ uid: res.profile.userId })
+                        if (info.code === 200 && info.profile) profile = info.profile
+                    } catch { /* 拿不到详情就沿用登录返回的 profile */ }
+
+                    setLoginSuccess(profile, res.token, res.cookie)
                     proxy.$msg.success('登录成功')
                     resolve(true)
                 } else {

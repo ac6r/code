@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import utils from '@/utils/util'
 
-// 合并歌曲到播放列表查重
-const concatPlayList = (list, playList = []) => {
+// 合并歌曲到播放列表查重；VIP 与无版权歌曲一律不加入播放列表
+const concatPlayList = (list = [], playList = []) => {
     return utils.concatPlayList(
-        list.filter(item => !item.license && !item.vip),
+        list.filter(item => item && !item.license && !item.vip),
         playList
     )
 }
@@ -22,7 +22,9 @@ export const usePlayerStore = defineStore('player', {
         // 登录相关——优先从 localStorage 恢复
         isLogin: loadState('isLogin', false),
         loginDialogVisible: false,
-        userInfo: JSON.parse(window.localStorage.getItem('userInfo') || 'null') || null,
+        // 同样走安全解析：localStorage 里若是坏值（例如字符串 "undefined"），
+        // JSON.parse 会抛错并让整个 store 初始化失败、页面直接白屏。
+        userInfo: loadState('userInfo', null),
 
         // 播放相关——优先从 localStorage 恢复
         isPlayed: false,
@@ -63,20 +65,32 @@ export const usePlayerStore = defineStore('player', {
         loginSuc(val) {
             this.setLoginDialog(val)
         },
+        // 以下三个方法都返回「是否产生了可播放的内容」，方便调用方给出提示，
+        // 避免出现“点了播放全部但什么都没发生”的静默失败。
         playAll({ list }) {
-            this.SET_PLAYLIST(concatPlayList(list))
+            const playlist = concatPlayList(list)
+            if (!playlist.length) return false
+            this.SET_PLAYLIST(playlist)
             this.SET_PLAYSTATUS(true)
             this.SET_PLAYINDEX(0)
+            return true
         },
         selectPlay({ list }) {
-            const pl = concatPlayList(list, this.playList)
-            this.SET_PLAYLIST(pl)
+            const playlist = concatPlayList(list, this.playList)
+            if (!playlist.length) return false
+            this.SET_PLAYLIST(playlist)
             this.SET_PLAYSTATUS(true)
-            this.SET_PLAYINDEX(pl.findIndex(d => d.id === list[0].id))
+            // 目标歌曲若因 VIP / 无版权被过滤掉，退回列表里已有的一首，
+            // 避免出现 findIndex 返回 -1 的坏状态（播放器会指向空歌曲）
+            const index = playlist.findIndex(item => item.id === list[0].id)
+            this.SET_PLAYINDEX(index > -1 ? index : 0)
+            return true
         },
         addList({ list }) {
-            this.SET_PLAYLIST(concatPlayList(list, this.playList))
-            this.SET_PLAYLISTTIPS(true)
+            const playlist = concatPlayList(list, this.playList)
+            if (playlist.length === this.playList.length) return false
+            this.SET_PLAYLIST(playlist)
+            return true
         },
     },
 })

@@ -317,6 +317,21 @@ server.listen(PORT, () => {
   startRealApi()
 })
 
+// 端口被占用时给出可读提示，而不是抛出未捕获异常把进程整个炸掉
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error('')
+    console.error(`  端口 ${PORT} 已被占用，网关无法启动。`)
+    console.error('  常见原因：上一次 npm run dev 的进程没退干净（关掉终端时子进程可能残留）。')
+    console.error(`  查看占用：netstat -ano | findstr :${PORT}`)
+    console.error('  解决：结束占用该端口的进程后重试；或直接重新运行 npm run dev（会自动复用已在运行的网关）。')
+    console.error('')
+    process.exit(1)
+  }
+  console.error('[gateway] 服务异常：', err)
+  process.exit(1)
+})
+
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
     if (child) child.kill()

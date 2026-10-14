@@ -54,7 +54,7 @@
 | `/dj` | 电台详情 | 电台信息、节目列表、订阅、热门电台 |
 | `/search` | 搜索结果 | 单曲 / 歌手 / 专辑 / 歌单 / MV 五个 Tab |
 | `/my` | 我的音乐 | 登录入口、我的歌单、收藏歌单 |
-| `/user` | 用户主页 | **占位页，尚未实现** |
+| `/user` | 用户主页 | 用户资料（头像 / 昵称 / 关注 / 粉丝 / 等级 / 签名）+ TA 的歌单；评论、歌单创建者等处的头像昵称都会跳到这里 |
 
 ### 播放器功能
 
@@ -70,7 +70,31 @@
 - **画中画（PiP）**：`canvas.captureStream()` 把封面投到画中画窗口
 - **Media Session API**：接管系统媒体键
 - **状态持久化**：播放列表与登录态存 localStorage，刷新可恢复
-- 版权 / 付费歌曲（`fee === 1`）按钮置灰并提示
+- **VIP / 无版权歌曲的处理**见下方「VIP 与版权」
+
+### VIP 与版权
+
+**不做任何绕过付费墙的处理**：VIP 歌曲与无版权歌曲一律不进入播放列表、不请求播放地址，只说明原因并引导到官方渠道。
+
+判定与文案集中在 `src/utils/vip.js`：
+
+| 方法 | 作用 |
+| --- | --- |
+| `canPlaySong(song)` | 是否能播（`vip` 或 `license` 任一为真都算不能播） |
+| `unplayableReason(song)` | 不能播的原因文案 |
+| `tipUnplayable(target, song)` | 统一提示：VIP 用 warning 并附「去官方开通会员 >」链接（指向官方 `https://music.163.com/vip`）；无版权用 info |
+
+各入口的表现：
+
+- 歌曲列表（`SongList`）：VIP / 无版权行置灰，但播放按钮保留可点 —— 点了给出说明，而不是静默无反应
+- 歌曲详情页：播放按钮走同一套提示
+- 专辑 / 榜单 / 歌单 / 歌手的「播放全部」：整个列表都不可播时提示「暂无可播放的歌曲」
+- 播放器（`AudioBox`）：音频加载失败时由 `errorSong` 统一提示并暂停（此前该处理函数缺失，出错会直接抛异常）
+
+顺带修掉的坑：
+
+- 点 VIP 歌曲曾把 `playIndex` 算成 `-1`（播放器指向空歌曲），现在会退回列表里已有的歌曲
+- `formatSongs` 在接口没返回 `privileges` 时不再抛异常
 
 ### 数据来源（三层结构）
 
@@ -111,6 +135,27 @@ npm run dev        # 一条命令同时启动网关(3000) + vite(9999)
 - 响应式：Less mixin + `useMobile` composable，PC 用侧边栏，移动端用底部 Tab Bar
 - `index.html` 设了 `no-referrer`，用于规避网易云图片防盗链
 - `img/` 目录备有 10 张实拍截图，可直接用于文档展示
+- **重复 `npm run dev` 不会再崩**：`server/dev.mjs` 启动前会探测 3000 / 9999，已在运行就复用（两个都在跑时直接提示访问地址）；`server/api-server.js` 也把 `EADDRINUSE` 换成了可读提示，不再抛未捕获异常
+
+### 本次更新（相对上一版）
+
+**新增**
+
+- `src/utils/vip.js` — VIP / 版权 的统一判定与提示（含官方会员入口）
+
+**修复**
+
+- `src/views/user/Index.vue` — `/user` 之前是 `<div>1111</div>` 占位页，但评论头像、歌单创建者、相关歌单作者等多处都链接到它，点进去只有「1111」；现已实现完整的用户主页（资料 + TA 的歌单）
+- `src/views/playlist/Detail.vue` — 歌单详情里评论者链接误把 `commentId` 当用户 id，改为 `item.user.userId`
+- `src/components/Login.vue` — 登录接口返回 `code:200` 但 `profile:null`（mock 环境如此）时，读 `res.profile.userId` 会抛异常，把后端提示吞掉并误报「登录失败」；改为判空并透出 `res.msg`
+- `src/stores/player.js` — `JSON.parse(localStorage.userInfo)` 没有兜底，localStorage 出现坏值会让整个 store 初始化失败、页面白屏；改用安全解析
+- `src/views/my/Index.vue`、`server/mock/handlers.js` — 个性签名字段拼写 `signnature`（应为 `signature`），导致「我的」页永远不显示签名；前后端已统一
+
+**改进**
+
+- `server/api-server.js` — 端口占用时打印可读提示并正常退出，不再把进程炸掉
+- `server/dev.mjs` — 启动前探测 3000 / 9999，已在运行则复用
+- VIP / 版权落地：`src/utils/util.js`、`src/stores/player.js`、`src/components/SongList.vue`、`src/components/PlayBarTmp/AudioBox.vue`、`src/views/song/Index.vue`、`src/views/album/Index.vue`、`src/views/rank/Index.vue`、`src/views/playlist/Detail.vue`、`src/views/singer/Index.vue`、`src/views/index/RankList.vue`
 
 ---
 

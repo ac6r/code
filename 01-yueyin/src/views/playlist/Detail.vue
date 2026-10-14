@@ -101,7 +101,7 @@
                     <h3 class="aside-title">歌单评论</h3>
                     <div class="aside-main comment-main">
                         <div class="comment-item" v-for="item in comments" :key="item.commentId">
-                            <router-link :to="{path:'/user',query:{id:item.commentId}}">
+                            <router-link :to="{path:'/user',query:{id:item.user.userId}}">
                                 <el-image :src="item.user.avatarUrl">
                                     <template #placeholder>
                                         <div class="image-slot">
@@ -111,7 +111,7 @@
                                 </el-image>
                             </router-link>
                             <div class="comment-info">
-                                <div class="comment-userInfo"><router-link :to="{path:'/user',query:{id:item.commentId}}" class="comment-name">{{ item.user.nickname }}</router-link><span>{{ $utils.formatMsgTime(item.time) }}</span></div>
+                                <div class="comment-userInfo"><router-link :to="{path:'/user',query:{id:item.user.userId}}" class="comment-name">{{ item.user.nickname }}</router-link><span>{{ $utils.formatMsgTime(item.time) }}</span></div>
                                 <div class="comment-desc">{{ item.content }}</div>
                             </div> 
                         </div>
@@ -244,9 +244,9 @@ const getComment = async(params) => {
 
 //播放列表为当前歌单的全部歌曲
 const playAllsongs = () =>{
-    store.playAll( {
-        list: info.songList
-    } )
+    if (!store.playAll({ list: info.songList })) {
+        return proxy.$msg.warning('该歌单暂无可播放的歌曲（可能为 VIP 或无版权）')
+    }
     store.SET_PLAYLISTTIPS(true)
 }
 

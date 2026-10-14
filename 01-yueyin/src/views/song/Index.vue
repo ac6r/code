@@ -106,6 +106,7 @@ import CommentList from '@components/Comments.vue'
 import { getCurrentInstance, reactive, onMounted, computed, ref , toRefs} from 'vue'
 import { onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { usePlayerStore } from "@/stores/player"
+import { canPlaySong, tipUnplayable } from '@/utils/vip'
 
 const { proxy } = getCurrentInstance()
 const store = usePlayerStore()
@@ -150,23 +151,20 @@ const getSongDetail = async () => {
 
 // 播放音乐
 const playing = (params) => {
-    // 若当前唔歌曲 或者 当前播放歌曲不是本页显示的歌曲  立即播放当前页面歌曲
-    if (!curSongInfo.value || curSongInfo.value.id !== params.id) {
-        // 无版权及vip不可播放
-        if (params.license) {
-            proxy.$msg.error('由于版权保护，您所在的地区暂时无法使用。')
-            return
-        }
+    // 点的正是当前播放的这首 → 切换播放/暂停
+    if (curSongInfo.value && curSongInfo.value.id === params.id) {
+        store.SET_PLAYSTATUS(!isPlayed.value)
+        return
+    }
 
-        if (params.vip) {
-            proxy.$msg.error('付费歌曲，请在网易云音乐播放')
-            return
-        }
+    // VIP / 无版权歌曲：统一给出说明（VIP 附官方开通入口），不做任何绕过
+    if (!canPlaySong(params)) {
+        tipUnplayable(proxy, params)
+        return
+    }
 
-        store.selectPlay( { list: [params] })
-        store.SET_PLAYLISTTIPS( true)
-    } else {
-        store.SET_PLAYSTATUS( !isPlayed.value)
+    if (store.selectPlay({ list: [params] })) {
+        store.SET_PLAYLISTTIPS(true)
     }
 }
 
