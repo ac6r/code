@@ -11,7 +11,7 @@
 | 目录 | 项目 | 形态 | 技术栈 | 数据来源 |
 | --- | --- | --- | --- | --- |
 | [`01-yueyin/`](./01-yueyin) | 悦音音乐 | Web 单页应用 | Vue 3 · Vite · Pinia · Element Plus · Swiper | 本地 Node 网关（真实网易云 API + mock 回落） |
-| [`02-qingliao/`](./02-qingliao) | 轻聊 EasyChat | Electron 桌面客户端 | Electron · Vue 3 · electron-vite · Element Plus | 前端 mock（vite-plugin-mock） |
+| [`02-qingliao/`](./02-qingliao) | 轻聊 EasyChat | Electron 桌面客户端 | Electron · Vue 3 · electron-vite · Element Plus | 前端 mock（vite-plugin-mock）+ DeepSeek / 豆包（可选） |
 | [`03-ecom-admin/`](./03-ecom-admin) | 电商后台管理 | Web 管理后台 | Vue 3 · Vite · Pinia · Element Plus · ECharts | 前端 mock（mockjs） |
 
 ---
@@ -116,7 +116,7 @@ npm run dev        # 一条命令同时启动网关(3000) + vite(9999)
 
 ## 02-qingliao — 轻聊 EasyChat
 
-模仿微信界面的桌面 IM 客户端。登录/注册、联系人、搜索加好友、聊天收发等均由前端 mock 驱动，**仓库内不含后端服务**。
+模仿微信界面的桌面 IM 客户端。登录/注册、联系人、搜索加好友、聊天收发等由前端 mock 驱动，**仓库内不含后端服务**；「快速会话」中的四个对象已接入真实大模型（DeepSeek / 豆包），未配置密钥时自动降级为内置离线回复。
 
 ### 技术栈
 
@@ -131,12 +131,19 @@ npm run dev        # 一条命令同时启动网关(3000) + vite(9999)
 | Element Plus | 2.4 | UI 组件 |
 | vite-plugin-mock + mockjs | 3.0 / 1.1 | 接口 mock |
 | electron-store | 8.1 | 主进程持久化 KV |
+| axios | 1.6 | 主进程调用 AI 服务（DeepSeek / 豆包） |
 
 ### 进程结构
 
-- **主进程** `src/main/`：创建唯一 `BrowserWindow`（初始 300×370 登录尺寸，`transparent`，隐藏标题栏），注册三个 IPC 通道：`loginOrRegister`（切换窗口高度 370 ↔ 490）、`openChat`（登录后窗口调整为 850×800 并允许缩放）、`winTitleop`（置顶 / 最小化 / 最大化 / 关闭，关闭可隐藏到任务栏）
+- **主进程** `src/main/`：创建唯一 `BrowserWindow`（初始 300×370 登录尺寸，隐藏标题栏；为保证能正常最大化已改为 `transparent: false`），按职责拆成多个模块：
+  - `ipc.js` — `loginOrRegister`（切换窗口高度 370 ↔ 490）、`openChat`（登录后窗口调整为 850×800 并允许缩放）、`winTitleop`（置顶 / 最小化 / 最大化 / 关闭，关闭可隐藏到任务栏）
+  - `ai.js` — `chat:ai`：把「快速会话」的聊天记录转成 OpenAI 兼容请求发给 DeepSeek / 豆包
+  - `fileManager.js` — `file:list / preview / open / reveal / openDir / delete`：管理 `<userData>/files` 目录
+  - `appInfo.js` — `app:info`、`app:openExternal`：关于页需要的版本信息与打开外链
+  - `windowAnimator.js` — 逐帧插值 + 缓动，让最大化 / 还原、登录 ↔ 注册的窗口缩放都是平滑过渡
+  - 窗口状态（最大化 / 置顶）变化后通过 `winState` 回推渲染进程，保证按钮图标与实际一致
 - **预加载** `src/preload/`：很薄，因 `contextIsolation: false`，渲染进程直接以 `window.ipcRenderer` 使用 IPC
-- **渲染进程** `src/renderer/`：标准 Vue 3 SPA
+- **渲染进程** `src/renderer/`：标准 Vue 3 SPA；`utils/avatar.js` 本地生成头像，`utils/localAI.js` 为离线兜底回复
 
 ### 页面与路由
 
@@ -152,17 +159,46 @@ npm run dev        # 一条命令同时启动网关(3000) + vite(9999)
   │     └── creatGroup           新建群聊（占位）
   └── /main/setting              设置
         ├── userinfo             账号设置
-        ├── fileMange            文件管理（占位）
-        └── about                关于轻聊（占位）
+        ├── fileMange            文件管理（列表 / 筛选 / 预览 / 删除）
+        └── about                关于轻聊（版本 / 协议 / 反馈）
 ```
 
 ### 核心功能
 
 - **认证**：邮箱注册 / 登录 + 图形验证码（mock 生成），密码 md5 后传输
-- **会话与消息**：会话列表（联系人 + 群聊）、文本消息收发、时间戳、气泡左右分栏（自己靠右绿色 `#95ec69`）、按 `senderId` 判定归属、切换会话加载历史并自动滚到底
-- **联系人**：好友 / 群聊分组、搜索用户与群组、申请添加（可填申请理由）、头像弹窗详情、一键跳转聊天
+- **会话与消息**：会话列表（联系人 + 群聊）、文本消息收发、发送与回复都写入同一套本地时间戳、气泡左右分栏（自己靠右绿色 `#95ec69`）、按消息自身的 `self` 标记判定归属、切换会话加载历史并自动滚到底、发送后输入框自动重新聚焦
+- **AI 会话**：四个快速会话对象（小明 / 小红 / 前端技术交流群 / 摸鱼闲聊群）各带人设，接入 DeepSeek（`DEEPSEEK_API_KEY`）或豆包 / 火山方舟（`ARK_API_KEY`）；请求由主进程发起（不跨域、密钥不进渲染层），未配置密钥或调用失败时自动回退到内置离线回复
+- **联系人**：好友 / 群聊分组、搜索用户与群组、申请添加（可填申请理由）、头像弹窗详情、一键跳转聊天；头像全部由 `utils/avatar.js` 本地生成（昵称首字 + 由 ID 决定的稳定配色），离线也能秒显示，新增联系人生效
+- **文件管理**：管理应用数据目录 `<userData>/files`，支持搜索、按类型（图片 / 视频 / 音频 / 文档 / 其他）筛选、图片预览、用系统程序打开、在资源管理器中定位、删除
+- **关于轻聊**：Logo / 名称 / 版本、检查更新、隐私保护指引、用户服务协议、开源许可、意见反馈，底部展示 Electron / Chromium / Node 版本与版权
 - **多账号**：本地记住多个账号并一键切换（localStorage）
-- **窗口**：自绘标题栏，支持拖拽、置顶、最小化、最大化、关闭到托盘
+- **窗口**：自绘标题栏，支持拖拽、置顶、最小化、最大化、关闭到托盘；最大化 / 还原与窗口缩放均为缓动过渡，不再瞬间跳变
+
+### 本次更新（相对上一版）
+
+**新增**
+
+- `src/main/ai.js` — AI 会话（DeepSeek / 豆包，OpenAI 兼容接口）
+- `src/main/fileManager.js` — 文件管理 IPC 与目录读写
+- `src/main/appInfo.js` — 版本 / 运行时信息与外链打开
+- `src/main/windowAnimator.js` — 窗口尺寸缓动过渡
+- `src/renderer/src/utils/avatar.js` — 本地 SVG 头像生成
+- `src/renderer/src/utils/localAI.js` — 离线兜底回复
+- `.env.example` — AI 密钥配置示例
+
+**修改**
+
+- `src/main/index.js` — 注册新 IPC 通道、窗口平滑动画、窗口状态回推
+- `src/renderer/src/components/Avatar.vue` — 去掉外网头像，改为本地生成 + 加载失败回退
+- `src/renderer/src/components/WinOp.vue` — 与主进程同步真实窗口状态
+- `src/renderer/src/views/chat/GiveMessage.vue` — 接入 AI、消息时间戳、发送后自动聚焦
+- `src/renderer/src/views/chat/LinkPeople.vue`、`views/contact/Contact.vue`、`components/UserBaseInfo.vue`、`views/setting/UserInfo.vue` — 头像改为本地生成
+- `src/renderer/src/views/setting/FileMange.vue` — 文件管理页面（原为占位）
+- `src/renderer/src/views/setting/About.vue` — 关于轻聊页面（原为占位）
+- `src/renderer/src/views/Login.vue` — 修复登录页图标不显示
+- `src/renderer/src/data/fixedContacts.js`、`stores/chatMessages.js` — 移除预置聊天记录，固定会话从空记录开始
+- `src/renderer/src/stores/UserinfoStore.js`、`mock/account.js` — 移除 robohash 外链头像
+- `.gitignore` — 忽略 `.env`、`installPackages`
 
 ### 演示账号
 
@@ -191,12 +227,27 @@ npm run dev        # 开发模式（会先 chcp 65001 切 UTF-8 代码页）
 | `npm run build:linux` | Linux 打包（AppImage / snap / deb） |
 | `npm run lint` / `format` | ESLint / Prettier |
 
+### AI 配置（可选）
+
+「快速会话」的自动回复需要一个模型密钥，复制 `.env.example` 为 `.env` 后填任意一个即可：
+
+```bash
+DEEPSEEK_API_KEY=sk-你的DeepSeek密钥       # 优先使用
+# 或者
+ARK_API_KEY=你的火山方舟APIKey            # 豆包
+ARK_MODEL=doubao-pro-32k                 # 或你的推理接入点 id（ep- 开头）
+# AI_PROVIDER=deepseek                    # 想强制指定提供商时使用
+```
+
+未配置密钥时，四个会话对象会退回内置的离线简易回复（能闲聊，但答不准具体问题）。密钥只在主进程读取，不会打进前端产物。
+
 ### 注意事项
 
 - **`npm run dev` 的 `chcp 65001` 是 Windows 专用**，macOS / Linux 上需直接跑 `electron-vite dev`
 - **打包配置有两套且不一致**：`package.json` 的 `build` 段（productName `EasyChat`、输出 `installPackages`）与 `electron-builder.yml`（productName `qingliao`、输出 `dist`）。npm 脚本带 `--config`，实际生效的是 **yml**
 - **数据不持久**：聊天记录与新增联系人存在内存 `reactive` 里，刷新即丢；只有账号列表与当前用户走 localStorage
-- **依赖外部网络**：随机动物头像调用 `dog.ceo` / `thecatapi.com` / `loremflickr.com`；`index.html` 外链 unpkg 的 Element Plus CSS 与 bootcdn 的 Font Awesome，离线环境 UI 可能异常
+- **外部网络**：头像已改为本地生成，不再依赖 `dog.ceo` / `robohash` 等外链；但 `index.html` 仍外链 unpkg 的 Element Plus CSS 与 bootcdn 的 Font Awesome，离线环境 UI 可能异常
+- **AI 密钥来自环境变量**（`DEEPSEEK_API_KEY` / `ARK_API_KEY`，也支持项目根目录的 `.env`），仅在主进程使用，不会进入渲染层
 - **路由导入大小写不匹配**（如路由写 `search.vue`、文件是 `Search.vue`），Windows / macOS 能跑，Linux / CI 会解析失败
 - `contextIsolation: false` + `sandbox: false` 属于教学 / 演示级配置，生产环境不建议
 - `.npmrc` 里只配了 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`——国内加速 Electron 二进制下载，**`npm install` 超时基本靠它**
